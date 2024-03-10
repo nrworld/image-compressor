@@ -11,7 +11,7 @@ function updateImage() {
     const file = document.getElementById('imageInput').files[0];
     const quality = parseFloat(document.getElementById('compressionSlider').value);
     if (file) {
-        shrinkJpegFile(file, 800, 600, quality, function (blob) {
+        shrinkJpegFile(file, quality, function (blob) {
             const downloadBtn = document.getElementById('downloadBtn');
             const fileSizeInfo = document.getElementById('fileSizeInfo');
             const thumbnail = document.getElementById('thumbnail');
@@ -26,64 +26,39 @@ function updateImage() {
     }
 }
 
-function shrinkJpegFile(file, maxWidth, maxHeight, quality, callback) {
-  // Create an image element
-  const img = new Image();
-  // Create a file reader
-  const reader = new FileReader();
+function shrinkJpegFile(file, quality, callback) {
+    const img = new Image();
+    const reader = new FileReader();
 
-  reader.onload = function (e) {
-    // Set the image source to the file reader result
-    img.src = e.target.result;
-  };
+    reader.onload = function(e) {
+        img.src = e.target.result;
+    };
 
-  img.onload = function () {
-    // Create a canvas element
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
+    img.onload = function() {
+        // Use the source image's dimensions
+        let width = img.width;
+        let height = img.height;
 
-    // Calculate the new size
-    let width = img.width;
-    let height = img.height;
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
 
-    if (width > height) {
-      if (width > maxWidth) {
-        height *= maxWidth / width;
-        width = maxWidth;
-      }
-    } else {
-      if (height > maxHeight) {
-        width *= maxHeight / height;
-        height = maxHeight;
-      }
-    }
+        canvas.width = width;
+        canvas.height = height;
 
-    // Set canvas size to the new dimensions
-    canvas.width = width;
-    canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
 
-    // Draw the image on canvas
-    ctx.drawImage(img, 0, 0, width, height);
+        // Adjust logic for quality = 1.0
+        if (quality === 1) {
+            // Bypass canvas for 100% quality to avoid any compression
+            // This simply uses the original image data
+            callback(file);
+        } else {
+            // Use the specified quality for compression
+            canvas.toBlob(function(blob) {
+                callback(blob);
+            }, 'image/jpeg', quality);
+        }
+    };
 
-    // Convert the canvas to a JPEG file
-    canvas.toBlob(function (blob) {
-      // Return the blob file through the callback
-      callback(blob);
-    }, 'image/jpeg', quality);
-  };
-
-  // Read the file as a data URL
-  reader.readAsDataURL(file);
+    reader.readAsDataURL(file);
 }
-
-// Usage example
-const fileInput = document.querySelector('#your-file-input');
-fileInput.addEventListener('change', function () {
-  const file = this.files[0];
-  if (file) {
-    shrinkJpegFile(file, 800, 600, 0.7, function (newFile) {
-      console.log('Shrinked file size:', newFile.size);
-      // You can now use this file (newFile) to upload or for any other purpose
-    });
-  }
-});
